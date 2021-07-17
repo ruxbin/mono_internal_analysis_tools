@@ -158,13 +158,33 @@ public class InstructionInfo
 
     private string insDesc;
 
+    public string InsDesc
+    {
+        get {
+            return this.insDesc;
+        }
+    }
+
     private string property2_category;
 
     private byte property2_pool;
 
     private string propertyString;
+
+    public string Category{
+        get {
+            return this.propertyString;
+        }
+    }
     
     private int[] successors;
+
+    public int[] Successors
+    {
+        get {
+            return this.successors;
+        }
+    }
 
     public InstructionInfo(Instruction ins,byte isentry,string property1name,byte property1p,string insdesc,
                     string property2category,byte property2p,string propertystring,int[] s)
@@ -197,10 +217,38 @@ public class Block
         this.insidIndices = ins;
         this.outBlockNums = outs;
     } 
+
+    public void DebugDump(Dictionary<int,InstructionInfo> infodic)
+    {
+        Console.WriteLine("-----------------------------------block {0}------------------------------------",blockNum);
+        for(int i=0;i<insidIndices.Length;++i)
+        {
+            int insindex = this.insidIndices[i];
+            List<string> successors = new List<string>();
+            foreach(int succ in infodic[insindex].Successors)
+            {
+                successors.Add(String.Format("{0}",succ));
+            }
+            Console.WriteLine("{0}:{1} category:{2} successors:[{3}]",insindex,infodic[insindex].InsDesc,infodic[insindex].Category,String.Join(" ",successors.ToArray()));
+        }
+        List<string> outs = new List<string>();
+        foreach(int outblock in this.outBlockNums)
+        {
+            outs.Add(String.Format("{0}",outblock));
+        }
+        Console.WriteLine("outBlockNums:{0}",String.Join(" ",outs));
+    }
 }
 public class Blocks
 {
     Block[] blocks;
+
+    public Block[] BLOCKS 
+    {
+        get{
+            return this.blocks;
+        }
+    }
     public void ParseFromSocket(Socket s)
     {
         int blockSize = DumpServer.ReadInt(s);
@@ -232,6 +280,13 @@ public class Instructions
     const int NUM_SUCCESSOR = 5;
 
     Dictionary<int,InstructionInfo> insid2Info = new Dictionary<int, InstructionInfo>();
+
+    public Dictionary<int,InstructionInfo> InsId2Info
+    {
+        get {
+            return this.insid2Info;
+        }
+    }
 
     public void ParseFromSocket(Socket s)
     {
@@ -291,13 +346,21 @@ public class IRMessage
     public void ParseFromSocket(Socket s)
     {
         this.phaseName = (string)DumpServer.ReadFromPool(s);
-        Console.WriteLine(this.phaseName);
+        Console.WriteLine("=========================>phase {0}",this.phaseName);
         Instructions ins = new Instructions();
         ins.ParseFromSocket(s);
         Blocks blocks = new Blocks();
         blocks.ParseFromSocket(s);
         this.instructions = ins;
         this.blocks = blocks;
+    }
+
+    public void DebugDump()
+    {
+        foreach(Block b in blocks.BLOCKS)
+        {
+            b.DebugDump(this.instructions.InsId2Info);
+        }
     }
 }
 
@@ -552,6 +615,7 @@ public class DumpServer
                         case MessageType.BEGIN_GRAPH:
                             IRMessage irmsg = new IRMessage();
                             irmsg.ParseFromSocket(handler);
+                            irmsg.DebugDump();
                             break;
                         
                         default:
